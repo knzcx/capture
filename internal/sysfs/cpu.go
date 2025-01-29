@@ -41,12 +41,21 @@ func CPUTemperature() ([]float32, error) {
 	corePaths := []string{
 		"/sys/devices/platform/coretemp.0/hwmon/hwmon*/temp*_input",
 		"/sys/class/hwmon/hwmon*/temp*_input",
+		"/sys/class/thermal/thermal_zone0/temp",  // Raspberry Pi CPU temperature sensor
 	}
 
 	var temps []float32
 
 	for _, pathPattern := range corePaths {
-		// Find paths for inputs that may contain core temp
+		// For exact paths (like Raspberry Pi), try reading directly
+		if !strings.Contains(pathPattern, "*") {
+			if temp, err := readTempFile(pathPattern); err == nil {
+				temps = append(temps, temp)
+				continue
+			}
+		}
+
+		// For glob patterns, find matching paths
 		matches, err := filepath.Glob(pathPattern)
 		if err != nil { // Keep looking for matches if we get an error
 			continue
